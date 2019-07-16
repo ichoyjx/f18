@@ -55,6 +55,7 @@ class OmpStructureChecker : public virtual BaseChecker {
 public:
   OmpStructureChecker(SemanticsContext &context) : context_{context} {}
 
+  void Enter(const parser::ExecutionPartConstruct &);
   void Enter(const parser::ExecutableConstruct &);
   void Leave(const parser::ExecutableConstruct &);
 

@@ -108,6 +108,20 @@
 !                     collapse-clause |
 !                     ordered-clause
 
+! Labeled DO loops are accepted
+
+  !$omp parallel
+  !$omp do
+  do 10 i=1, N
+     a = 3.14
+10   print *, a
+  !$omp end parallel
+
+  !$omp parallel do
+  DO CONCURRENT (i = 1:N)
+     a = 3.14
+  END DO
+
   !ERROR: When SCHEDULE clause has AUTO specified, it must not have chunk size specified
   !ERROR: At most one SCHEDULE clause can appear on the DO directive
   !ERROR: When SCHEDULE clause has RUNTIME specified, it must not have chunk size specified
@@ -223,20 +237,38 @@
 ! Loop association check
 
   a = 0.0
-  !ERROR: The END PARALLEL DO must follow the do-loop associated with the loop construct
+  !ERROR: The END PARALLEL DO must follow the DO loop associated with the loop construct
   !$omp end parallel do
   !$omp parallel do private(c)
   do i = 1, N
      do j = 1, N
-        !ERROR: do-loop is expected after the PARALLEL DO directive
+        !ERROR: DO loop is expected after the PARALLEL DO directive
         !$omp parallel do shared(b)
         a = 3.14
      enddo
-     !ERROR: The END PARALLEL DO must follow the do-loop associated with the loop construct
+     !ERROR: The END PARALLEL DO must follow the DO loop associated with the loop construct
      !$omp end parallel do
   enddo
   a = 1.414
-  !ERROR: The END PARALLEL DO must follow the do-loop associated with the loop construct
+  !ERROR: The END PARALLEL DO must follow the DO loop associated with the loop construct
+  !$omp end parallel do
+
+  do i = 1, N
+     !$omp parallel do
+     do j = 2*i*N, (2*i+1)*N
+        a = 3.14
+     enddo
+  enddo
+  !ERROR: The END PARALLEL DO must follow the DO loop associated with the loop construct
+  !$omp end parallel do
+
+  !ERROR: DO loop is expected after the PARALLEL DO directive
+  !$omp parallel do private(c)
+5 FORMAT (1PE12.4, I10)
+  do i=1, N
+     a = 3.14
+  enddo
+  !ERROR: The END PARALLEL DO must follow the DO loop associated with the loop construct
   !$omp end parallel do
 
 ! 2.8.3 do-simd-clause -> do-clause |
@@ -261,4 +293,12 @@
         a = 3.14
      enddo
   enddo
+
+  !$omp parallel do simd
+  do i = 1, N
+     a = 3.14
+  enddo
+  !$omp end parallel do simd
+  !ERROR: The END PARALLEL DO SIMD must follow the DO loop associated with the loop construct
+  !$omp end parallel do simd
 end
