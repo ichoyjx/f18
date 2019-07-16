@@ -51,6 +51,11 @@ ENUM_CLASS(OmpClause, DEFAULTMAP, INBRANCH, MERGEABLE, NOGROUP, NOTINBRANCH,
 
 using OmpClauseSet = common::EnumSet<OmpClause, OmpClause_enumSize>;
 
+ENUM_CLASS(CheckState, JustSawLoopConstruct, InOmpLoopRegion,
+    AllowOptionalEndDirective, InEndDirective)
+
+using CheckStateSet = common::EnumSet<CheckState, CheckState_enumSize>;
+
 class OmpStructureChecker : public virtual BaseChecker {
 public:
   OmpStructureChecker(SemanticsContext &context) : context_{context} {}
@@ -124,6 +129,7 @@ private:
     std::multimap<OmpClause, const parser::OmpClause *> clauseInfo;
 
     const parser::DoConstruct *doDirective{nullptr};
+    CheckStateSet checkState;
   };
   // back() is the top of the stack
   const OmpContext &GetContext() const { return ompContext_.back(); }
@@ -149,6 +155,15 @@ private:
   void SetContextDo(const parser::DoConstruct &dir) {
     ompContext_.back().doDirective = &dir;
   }
+  void SetContextState(const CheckState &state) {
+    ompContext_.back().checkState.set(state);
+  }
+  void ResetContextState(const CheckState &state) {
+    ompContext_.back().checkState.reset(state);
+  }
+  bool IsContextState(const CheckState &state) {
+    return ompContext_.size() > 0 && ompContext_.back().checkState.test(state);
+  }
   const parser::OmpClause *FindClause(const OmpClause &type) {
     auto it{GetContext().clauseInfo.find(type)};
     if (it != GetContext().clauseInfo.end()) {
@@ -167,12 +182,6 @@ private:
   bool ScheduleModifierHasType(const parser::OmpScheduleClause &,
       const parser::OmpScheduleModifierType::ModType &);
 
-  struct CheckState {
-    bool justSawLoopConstruct{false};
-    bool inOmpLoopRegion{false};
-    bool allowOptionalEndDirective{false};
-    bool inEndDirective{false};
-  } checkState_;
   SemanticsContext &context_;
   std::vector<OmpContext> ompContext_;  // used as a stack
 };
