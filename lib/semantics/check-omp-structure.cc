@@ -65,6 +65,52 @@ void OmpStructureChecker::CheckAllowed(const OmpClause &type) {
   SetContextClauseInfo(type);
 }
 
+void OmpStructureChecker::Enter(const parser::Block &block) {
+  parser::CharBlock dirSource{nullptr};
+  parser::CharBlock endDirSource{nullptr};
+  auto loopDirIter{block.end()};
+  auto endLoopDirIter{block.end()};
+  auto doConstructIter{block.end()};
+  for (auto i{block.begin()}, end{block.end()}; i != end; ++i) {
+    if (const auto *exec{std::get_if<parser::ExecutableConstruct>(&i->u)}) {
+      if (const auto *ompCons{
+              std::get_if<common::Indirection<parser::OpenMPConstruct>>(
+                  &exec->u)}) {
+        if (const auto *ompLoop{std::get_if<parser::OpenMPLoopConstruct>(
+                &ompCons->value().u)}) {
+          const auto &dir{std::get<parser::OmpLoopDirective>(ompLoop->t)};
+          loopDirIter = i;
+          dirSource = dir.source;
+        }
+      }
+      if (const auto *doCons{
+              std::get_if<common::Indirection<parser::DoConstruct>>(
+                  &exec->u)}) {
+        doConstructIter = i;
+        if (loopDirIter != end && i != ++loopDirIter) {
+          context_.Say(dirSource,
+              "Do loop is expected after the %s directive"_err_en_US,
+              parser::ToUpperCaseLetters(dirSource.ToString()));
+          loopDirIter = end;
+        }
+      }
+      if (const auto *endDir{
+              std::get_if<common::Indirection<parser::OpenMPEndLoopDirective>>(
+                  &exec->u)}) {
+        // const auto
+        // *endLoopDir{std::get_if<parser::OmpLoopDirective>(&endDir->value().u)};
+        if (doConstructIter == end || i != ++doConstructIter) {
+          context_.Say(endDir->value().source,
+              "The %s must follow the DO loop associated with the "
+              "loop construct"_err_en_US,
+              parser::ToUpperCaseLetters(endDir->value().source.ToString()));
+          doConstructIter = end;
+        }
+      }
+    }
+  }  // Block list
+}
+
 void OmpStructureChecker::Enter(const parser::OpenMPConstruct &x) {
   // 2.8.1 TODO: Simd Construct with Ordered Construct Nesting check
 }

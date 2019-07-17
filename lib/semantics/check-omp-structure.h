@@ -55,6 +55,8 @@ class OmpStructureChecker : public virtual BaseChecker {
 public:
   OmpStructureChecker(SemanticsContext &context) : context_{context} {}
 
+  void Enter(const parser::Block &);
+
   void Enter(const parser::OpenMPConstruct &);
   void Enter(const parser::OpenMPLoopConstruct &);
   void Leave(const parser::OpenMPLoopConstruct &);
